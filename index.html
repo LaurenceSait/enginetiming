@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine Valve Timing — Interactive Lesson</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b6b6b;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+  }
+  body { font-family: var(--font-sans); color: var(--color-text-primary); background: #f0ede8; min-height: 100vh; padding: 2rem 1rem; }
+
+  .lesson-wrap { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 3rem; background: var(--color-background-primary); border-radius: 16px; }
+
+  .lesson-header { text-align: center; padding: 1rem 0 1.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 1.5rem; }
+  .lesson-header h1 { font-size: 20px; font-weight: 500; }
+  .lesson-header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+
+  .progress-bar-outer { height: 4px; background: var(--color-border-tertiary); border-radius: 2px; margin-bottom: 1.5rem; }
+  .progress-bar-inner { height: 4px; background: #1D9E75; border-radius: 2px; transition: width 0.4s ease; }
+
+  .stage-header { margin-bottom: 1.5rem; }
+  .stage-label { font-size: 12px; font-weight: 500; color: #1D9E75; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .stage-title { font-size: 22px; font-weight: 500; }
+  .stage-sub { font-size: 15px; color: var(--color-text-secondary); margin-top: 6px; line-height: 1.6; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 10px; }
+
+  .theory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  @media (max-width: 500px) { .theory-grid { grid-template-columns: 1fr; } }
+
+  .concept-card { border-radius: 10px; padding: 1rem; }
+  .concept-card.intake  { background: #E6F1FB; border: 0.5px solid #85B7EB; }
+  .concept-card.exhaust { background: #FAECE7; border: 0.5px solid #F0997B; }
+  .concept-card.overlap { background: #E1F5EE; border: 0.5px solid #5DCAA5; }
+  .concept-card.timing  { background: #FAEEDA; border: 0.5px solid #EF9F27; }
+  .concept-card h4 { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .concept-card.intake  h4 { color: #0C447C; }
+  .concept-card.exhaust h4 { color: #993C1D; }
+  .concept-card.overlap h4 { color: #0F6E56; }
+  .concept-card.timing  h4 { color: #633806; }
+  .concept-card p { font-size: 13px; line-height: 1.6; }
+  .concept-card.intake  p { color: #185FA5; }
+  .concept-card.exhaust p { color: #993C1D; }
+  .concept-card.overlap p { color: #0F6E56; }
+  .concept-card.timing  p { color: #633806; }
+
+  .sim-wrap { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
+  .sim-canvas-wrap { flex: 0 0 260px; }
+  canvas#engineSim { display: block; border-radius: 10px; border: 0.5px solid var(--color-border-tertiary); background: #0a0a12; }
+  .sim-controls { flex: 1; min-width: 200px; }
+  .sim-stat { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .sim-stat span { font-weight: 500; color: var(--color-text-primary); font-size: 14px; }
+  .phase-indicator { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .phase-pill { font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; opacity: 0.3; transition: opacity 0.2s; }
+  .phase-pill.active { opacity: 1; }
+  .phase-pill.p-intake      { background: #B5D4F4; color: #0C447C; }
+  .phase-pill.p-compression { background: #D3D1C7; color: #2C2C2A; }
+  .phase-pill.p-power       { background: #FAC775; color: #412402; }
+  .phase-pill.p-exhaust     { background: #F5C4B3; color: #4A1B0C; }
+  .phase-pill.p-overlap     { background: #9FE1CB; color: #04342C; }
+
+  .valve-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .valve-block { flex: 1; border-radius: 8px; padding: 8px 12px; background: var(--color-background-secondary); }
+  .valve-block label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); display: block; margin-bottom: 4px; }
+  .valve-status { font-size: 14px; font-weight: 500; }
+  .valve-status.open   { color: #1D9E75; }
+  .valve-status.closed { color: var(--color-text-secondary); }
+
+  input[type=range] { width: 100%; accent-color: #1D9E75; }
+
+  .quiz-q { margin-bottom: 1.2rem; }
+  .quiz-q p { font-size: 15px; font-weight: 500; margin-bottom: 10px; }
+  .opt-btn { display: block; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 6px; border-radius: 8px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); font-size: 14px; color: var(--color-text-primary); cursor: pointer; transition: background 0.15s; font-family: inherit; }
+  .opt-btn:hover { background: var(--color-background-secondary); }
+  .opt-btn.correct { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
+  .opt-btn.wrong   { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
+  .feedback-msg { font-size: 13px; margin-top: 6px; padding: 8px 12px; border-radius: 8px; }
+  .feedback-msg.ok  { background: #E1F5EE; color: #085041; }
+  .feedback-msg.bad { background: #FAECE7; color: #4A1B0C; }
+
+  .challenge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 500px) { .challenge-grid { grid-template-columns: 1fr; } }
+  .chal-card { border: 1px solid var(--color-border-tertiary); border-radius: 10px; padding: 12px; }
+  .chal-card h4 { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-secondary); }
+  .chal-card input, .chal-card select { width: 100%; margin-bottom: 6px; padding: 8px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: 8px; font-size: 14px; background: var(--color-background-primary); color: var(--color-text-primary); font-family: inherit; }
+  .chal-result { font-size: 13px; font-weight: 500; margin-top: 6px; min-height: 20px; }
+
+  .btn-primary { padding: 10px 22px; background: #1D9E75; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: background 0.15s; font-family: inherit; }
+  .btn-primary:hover { background: #0F6E56; }
+  .btn-secondary { padding: 9px 20px; background: transparent; color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.15s; font-family: inherit; }
+  .btn-secondary:hover { background: var(--color-background-secondary); }
+
+  .nav-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.5rem; }
+
+  .keyterm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .keyterm { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; background: #EEEDFE; color: #3C3489; }
+
+  .hidden { display: none !important; }
+  .stage-section { display: none; }
+  .stage-section.active { display: block; }
+
+  .accordion { border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+  .acc-head { padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; background: var(--color-background-primary); }
+  .acc-head:hover { background: var(--color-background-secondary); }
+  .acc-arrow { font-size: 12px; transition: transform 0.2s; }
+  .acc-body { padding: 12px 16px; font-size: 13px; line-height: 1.7; color: var(--color-text-secondary); border-top: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); display: none; }
+  .acc-body.open { display: block; }
+
+  .score-big { font-size: 48px; font-weight: 500; color: #1D9E75; text-align: center; margin: 1rem 0; }
+  .score-msg { text-align: center; font-size: 16px; color: var(--color-text-secondary); }
+</style>
+</head>
+<body>
+<div class="lesson-wrap">
+  <div class="lesson-header">
+    <h1>Engine Valve Timing</h1>
+    <p>Self-directed learning activity &nbsp;·&nbsp; approximately 60 minutes</p>
+  </div>
+
+  <div class="progress-bar-outer">
+    <div class="progress-bar-inner" id="prog" style="width:0%"></div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <div class="stage-section active" id="s1">
+    <div class="stage-header">
+      <div class="stage-label">Stage 1 of 5 — Introduction</div>
+      <div class="stage-title">Engine valve timing</div>
+      <div class="stage-sub">Learn how and why valves open and close at precise points in the engine cycle — and what happens when timing goes wrong.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Learning objectives — by the end of this lesson you will be able to:</div>
+      <div style="font-size:14px;line-height:1.9;color:var(--color-text-secondary);">
+        ✅ &nbsp;Describe the four strokes and identify which valves are open during each<br>
+        ✅ &nbsp;Explain valve overlap and why it is used<br>
+        ✅ &nbsp;Read and interpret a valve timing diagram<br>
+        ✅ &nbsp;Calculate valve timing durations from given data<br>
+        ✅ &nbsp;Identify the effects of advanced and retarded timing
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">What you'll need</div>
+      <div style="font-size:14px;color:var(--color-text-secondary);line-height:1.9;">
+        — This activity (fully self-contained — no textbook needed)<br>
+        — Pen and paper for the challenge calculations<br>
+        — Approximately 60 minutes
+      </div>
+    </div>
+    <div class="card" style="background:#E6F1FB;border-color:#85B7EB;">
+      <div style="font-size:13px;font-weight:500;color:#0C447C;margin-bottom:6px;">Before you start — prior knowledge check</div>
+      <div style="font-size:14px;color:#185FA5;line-height:1.7;">Think about what you already know. Can you name the four strokes of a four-stroke engine in order? Write them down before you continue. You'll revisit this at the end.</div>
+    </div>
+    <div class="nav-row"><button class="btn-primary" onclick="goStage(2)">Start learning →</button></div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="stage-section" id="s2">
+    <div class="stage-header">
+      <div class="stage-label">Stage 2 of 5 — Core Theory</div>
+      <div class="stage-title">The four strokes and valve events</div>
+      <div class="stage-sub">Read each section carefully. Use the expandable notes to go deeper.</div>
+    </div>
+    <div class="theory-grid">
+      <div class="concept-card intake">
+        <h4>Intake stroke</h4>
+        <p>The piston moves <strong style="color:#0C447C">down</strong>. The <strong style="color:#0C447C">intake valve opens</strong> to allow the air-fuel mixture into the cylinder. The intake valve opens before TDC — this is called <em>intake valve opening (IVO)</em>.</p>
+      </div>
+      <div class="concept-card exhaust">
+        <h4>Exhaust stroke</h4>
+        <p>The piston moves <strong style="color:#993C1D">up</strong>. The <strong style="color:#993C1D">exhaust valve opens</strong> to push burned gases out. The exhaust valve closes after TDC — this is <em>exhaust valve closing (EVC)</em>.</p>
+      </div>
+      <div class="concept-card overlap">
+        <h4>Valve overlap</h4>
+        <p>Near TDC between exhaust and intake strokes, <strong style="color:#0F6E56">both valves are briefly open</strong>. This allows exhaust gas momentum to help draw in fresh charge. Overlap is measured in crankshaft degrees.</p>
+      </div>
+      <div class="concept-card timing">
+        <h4>Why timing matters</h4>
+        <p>Valves open <strong style="color:#633806">early</strong> to allow time for gas flow. Wrong timing reduces power, increases emissions, and can cause engine damage in interference engines.</p>
+      </div>
+    </div>
+    <div class="keyterm-row">
+      <span class="keyterm">TDC</span><span class="keyterm">BDC</span><span class="keyterm">IVO</span><span class="keyterm">IVC</span>
+      <span class="keyterm">EVO</span><span class="keyterm">EVC</span><span class="keyterm">Valve overlap</span><span class="keyterm">Dwell period</span>
+    </div>
+    <div class="accordion">
+      <div class="acc-head" onclick="toggleAcc(this)">Why do valves open before TDC/BDC? <span class="acc-arrow">▼</span></div>
+      <div class="acc-body">Gas takes time to flow. At high engine speeds this becomes critical — if the valve only opened at BDC, not enough mixture would enter. By opening the intake valve before BDC and keeping it open after BDC (using gas inertia), engineers maximise cylinder filling — this is called <strong>volumetric efficiency</strong>. The exhaust valve opens before BDC on the power stroke to use cylinder pressure to expel gases, slightly sacrificing some power stroke energy for better scavenging.</div>
+    </div>
+    <div class="accordion">
+      <div class="acc-head" onclick="toggleAcc(this)">What is a valve timing diagram? <span class="acc-arrow">▼</span></div>
+      <div class="acc-body">A valve timing diagram (also called a polar or circular valve timing diagram) shows the crankshaft rotation as a circle (360°) and marks the open/closed periods of each valve as arcs. Intake events are shown in one colour, exhaust in another. The diagram shows exactly when each valve event occurs relative to crankshaft position.</div>
+    </div>
+    <div class="accordion">
+      <div class="acc-head" onclick="toggleAcc(this)">Variable valve timing (VVT) — going further <span class="acc-arrow">▼</span></div>
+      <div class="acc-body">Modern engines use variable valve timing (VVT) systems — e.g. Honda's VTEC, Toyota's VVT-i — to alter when and how long valves stay open depending on engine load and speed. At low speed/load, conservative timing gives smooth idle and economy. At high speed/load, timing is advanced and lift increased for maximum power. Some systems (e.g. BMW Valvetronic) also vary valve lift directly, reducing the need for a throttle butterfly.</div>
+    </div>
+    <div class="accordion">
+      <div class="acc-head" onclick="toggleAcc(this)">Interference vs non-interference engines <span class="acc-arrow">▼</span></div>
+      <div class="acc-body">In an <strong>interference engine</strong>, the piston's travel path overlaps with the valve's open position — if the timing belt or chain breaks, a piston can strike an open valve causing catastrophic damage. In a <strong>non-interference engine</strong>, there is clearance between the piston and the fully open valve. This is a key reason timing belt replacement intervals are strictly observed.</div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStage(1)">← Back</button>
+      <button class="btn-primary" onclick="goStage(3)">Go to simulation →</button>
+    </div>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="stage-section" id="s3">
+    <div class="stage-header">
+      <div class="stage-label">Stage 3 of 5 — Interactive Simulation</div>
+      <div class="stage-title">Explore the engine cycle</div>
+      <div class="stage-sub">Use the slider to rotate the crankshaft and watch valve events in real time.</div>
+    </div>
+    <div class="sim-wrap">
+      <div class="sim-canvas-wrap">
+        <canvas id="engineSim" width="260" height="300"></canvas>
+      </div>
+      <div class="sim-controls">
+        <div class="sim-stat">Crank angle: <span id="crankDeg">0°</span></div>
+        <input type="range" id="crankSlider" min="0" max="719" value="0" oninput="updateSim()" style="margin:10px 0;">
+        <button class="btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="autoSpin()">▶ Auto-spin</button>
+        <div class="valve-row" style="margin-top:14px;">
+          <div class="valve-block"><label>Intake valve</label><div class="valve-status" id="ivStatus">—</div></div>
+          <div class="valve-block"><label>Exhaust valve</label><div class="valve-status" id="evStatus">—</div></div>
+        </div>
+        <div style="margin-top:12px;font-size:13px;color:var(--color-text-secondary);margin-bottom:6px;">Current stroke phase:</div>
+        <div class="phase-indicator">
+          <div class="phase-pill p-intake" id="pp-intake">Intake</div>
+          <div class="phase-pill p-compression" id="pp-comp">Compression</div>
+          <div class="phase-pill p-power" id="pp-power">Power</div>
+          <div class="phase-pill p-exhaust" id="pp-exhaust">Exhaust</div>
+          <div class="phase-pill p-overlap" id="pp-overlap">Overlap</div>
+        </div>
+        <div style="margin-top:14px;font-size:13px;line-height:1.7;color:var(--color-text-secondary);" id="simHint">Drag the slider to rotate the crankshaft. Watch for valve overlap near TDC.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem;">
+      <div class="card-title">Observation tasks — complete these as you explore</div>
+      <div style="font-size:14px;line-height:1.9;color:var(--color-text-secondary);">
+        1. At exactly 0° (TDC), which valves are open? Note this down.<br>
+        2. Drag slowly from 0° to 180°. What happens to the intake valve?<br>
+        3. Find the point where both valves are open simultaneously. What crank angle range is this?<br>
+        4. During the power stroke (~360°–540°), are either valves open?<br>
+        5. At what angle does the exhaust valve begin to open?
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStage(2)">← Back</button>
+      <button class="btn-primary" onclick="goStage(4)">Go to quiz →</button>
+    </div>
+  </div>
+
+  <!-- STAGE 4 -->
+  <div class="stage-section" id="s4">
+    <div class="stage-header">
+      <div class="stage-label">Stage 4 of 5 — Knowledge Check</div>
+      <div class="stage-title">Test your understanding</div>
+      <div class="stage-sub">Answer all questions. Feedback is given immediately — read it carefully before moving on.</div>
+    </div>
+    <div id="quizContainer"></div>
+    <div id="quizScore" class="hidden" style="text-align:center;padding:1rem;">
+      <div style="font-size:18px;font-weight:500;margin-bottom:6px;">Quiz complete!</div>
+      <div style="font-size:14px;color:var(--color-text-secondary);">You scored <span id="qScoreText" style="font-weight:500;color:#1D9E75;"></span></div>
+      <div style="font-size:13px;color:var(--color-text-secondary);margin-top:6px;" id="qScoreMsg"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStage(3)">← Back</button>
+      <button class="btn-primary hidden" id="quizNextBtn" onclick="goStage(5)">Go to challenge →</button>
+    </div>
+  </div>
+
+  <!-- STAGE 5 -->
+  <div class="stage-section" id="s5">
+    <div class="stage-header">
+      <div class="stage-label">Stage 5 of 5 — Application Challenge</div>
+      <div class="stage-title">Apply your knowledge</div>
+      <div class="stage-sub">Use what you've learned to solve real engine timing calculations and diagnostic scenarios.</div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-title">Calculation challenge — show your working on paper</div>
+      <div class="challenge-grid">
+        <div class="chal-card">
+          <h4>Challenge A — overlap duration</h4>
+          <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px;">IVO at 15° BTDC, EVC at 10° ATDC. Calculate the valve overlap period in degrees.</div>
+          <input type="number" id="chalA" placeholder="Enter degrees..." oninput="checkA()">
+          <div class="chal-result" id="chalAR"></div>
+        </div>
+        <div class="chal-card">
+          <h4>Challenge B — intake duration</h4>
+          <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px;">IVO = 20° BTDC. IVC = 50° ABDC. Calculate the total intake valve open duration in crank degrees.</div>
+          <input type="number" id="chalB" placeholder="Enter degrees..." oninput="checkB()">
+          <div class="chal-result" id="chalBR"></div>
+        </div>
+        <div class="chal-card">
+          <h4>Challenge C — exhaust duration</h4>
+          <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px;">EVO = 45° BBDC. EVC = 10° ATDC. Calculate the total exhaust valve open duration in crank degrees.</div>
+          <input type="number" id="chalC" placeholder="Enter degrees..." oninput="checkC()">
+          <div class="chal-result" id="chalCR"></div>
+        </div>
+        <div class="chal-card">
+          <h4>Challenge D — identify the fault</h4>
+          <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px;">A vehicle has poor idle and black smoke but improves at high revs. Select the most likely timing fault.</div>
+          <select id="chalD" onchange="checkD()">
+            <option value="">Select…</option>
+            <option value="a">Timing too advanced (early)</option>
+            <option value="b">Timing too retarded (late)</option>
+            <option value="c">Excessive valve overlap</option>
+            <option value="d">Insufficient valve overlap</option>
+          </select>
+          <div class="chal-result" id="chalDR"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="background:#FAEEDA;border-color:#EF9F27;margin-bottom:1rem;">
+      <div style="font-size:13px;font-weight:500;color:#633806;margin-bottom:6px;">Extension — merit/distinction level</div>
+      <div style="font-size:13px;color:#854F0B;line-height:1.7;">A performance engine is being re-cammed. The engineer wants to <strong style="color:#412402">increase power at high RPM</strong> while accepting slightly rougher idle. Describe two specific changes to valve timing they would make and explain the physical reason for each. Write your answer in your workbook.</div>
+    </div>
+    <div id="finalScore" class="hidden">
+      <div class="score-big" id="finalScoreNum">0/4</div>
+      <div class="score-msg" id="finalScoreMsg"></div>
+      <div style="margin-top:1.5rem;text-align:center;">
+        <button class="btn-secondary" onclick="goStage(1)">↺ Start again</button>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStage(4)">← Back</button>
+      <button class="btn-primary" onclick="showFinal()">Finish lesson →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES=5;let currentStage=1;let autoInterval=null;let chalDone=[false,false,false,false];
+function goStage(n){document.getElementById('s'+currentStage).classList.remove('active');currentStage=n;document.getElementById('s'+n).classList.add('active');document.getElementById('prog').style.width=((n-1)/(STAGES-1)*100)+'%';if(n===3)updateSim();if(n===4)buildQuiz();window.scrollTo(0,0);}
+function toggleAcc(el){const b=el.nextElementSibling;const a=el.querySelector('.acc-arrow');b.classList.toggle('open');a.style.transform=b.classList.contains('open')?'rotate(180deg)':'';}
+
+const IVO_DEG=340,IVC_DEG=230,EVO_DEG=495,EVC_DEG=375;
+function intakeOpen(a){return(a>=IVO_DEG&&a<=360)||(a>=0&&a<=IVC_DEG);}
+function exhaustOpen(a){return(a>=EVO_DEG&&a<=720)||(a>=0&&a<=(EVC_DEG-360));}
+function getPhase(a){const iv=intakeOpen(a),ev=exhaustOpen(a);if(iv&&ev)return'overlap';if(iv)return'intake';if(ev)return'exhaust';if(a>IVC_DEG&&a<360)return'compression';if(a>=360&&a<EVO_DEG)return'power';return'compression';}
+
+function updateSim(){
+  const a=parseInt(document.getElementById('crankSlider').value);
+  document.getElementById('crankDeg').textContent=a+'°';
+  const iv=intakeOpen(a),ev=exhaustOpen(a);
+  const ivEl=document.getElementById('ivStatus'),evEl=document.getElementById('evStatus');
+  ivEl.textContent=iv?'OPEN':'Closed';ivEl.className='valve-status '+(iv?'open':'closed');
+  evEl.textContent=ev?'OPEN':'Closed';evEl.className='valve-status '+(ev?'open':'closed');
+  const phase=getPhase(a);
+  document.getElementById('pp-intake').classList.toggle('active',phase==='intake');
+  document.getElementById('pp-comp').classList.toggle('active',phase==='compression');
+  document.getElementById('pp-power').classList.toggle('active',phase==='power');
+  document.getElementById('pp-exhaust').classList.toggle('active',phase==='exhaust');
+  document.getElementById('pp-overlap').classList.toggle('active',phase==='overlap');
+  const hints={intake:'Intake stroke: piston moving down, intake valve open — air-fuel mixture entering.',compression:'Compression stroke: both valves closed, piston moving up, mixture compressed.',power:'Power stroke: both valves closed, combustion pushes piston down — this is where work is done.',exhaust:'Exhaust stroke: piston moving up, exhaust valve open — burned gases expelled.',overlap:'Valve overlap: BOTH valves briefly open near TDC. Exhaust gas momentum helps draw in fresh charge.'};
+  document.getElementById('simHint').textContent=hints[phase]||'';
+  drawEngine(a,iv,ev,phase);
+}
+
+function autoSpin(){
+  if(autoInterval){clearInterval(autoInterval);autoInterval=null;return;}
+  let v=parseInt(document.getElementById('crankSlider').value);
+  autoInterval=setInterval(()=>{v=(v+3)%720;document.getElementById('crankSlider').value=v;updateSim();},40);
+}
+
+function drawEngine(ang,iv,ev,phase){
+  const c=document.getElementById('engineSim');const ctx=c.getContext('2d');const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0a0a12';ctx.fillRect(0,0,W,H);
+  const phaseColors={intake:'#378ADD',compression:'#888780',power:'#EF9F27',exhaust:'#D85A30',overlap:'#1D9E75'};
+  const col=phaseColors[phase]||'#888';
+  const cx=W/2,top=30,boreW=80,boreH=160;
+  ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.strokeRect(cx-boreW/2,top,boreW,boreH);
+  const crankCX=cx,crankCY=top+boreH+45,crankR=32;
+  ctx.beginPath();ctx.arc(crankCX,crankCY,crankR,0,Math.PI*2);ctx.strokeStyle='#444';ctx.lineWidth=1;ctx.stroke();
+  const crankAng=(ang*Math.PI/180)-Math.PI/2;
+  const pinX=crankCX+crankR*Math.cos(crankAng),pinY=crankCY+crankR*Math.sin(crankAng);
+  ctx.beginPath();ctx.arc(pinX,pinY,5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  const pistonY=Math.min(Math.max(crankCY-Math.sqrt(Math.max(0,95*95-Math.pow(pinX-crankCX,2))),top+10),top+boreH-30);
+  ctx.beginPath();ctx.moveTo(pinX,pinY);ctx.lineTo(cx,pistonY);ctx.strokeStyle='#666';ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle='#2a2a3a';ctx.strokeStyle='#555';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(cx-boreW/2+4,pistonY-18,boreW-8,28,4);ctx.fill();ctx.stroke();
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-boreW/2+6,pistonY-6);ctx.lineTo(cx+boreW/2-6,pistonY-6);ctx.stroke();
+  const portW=22,portH=14,ivX=cx-24,evX=cx+2,portY=top-portH;
+  ctx.fillStyle=iv?'#185FA5':'#1a1a2e';ctx.strokeStyle=iv?'#378ADD':'#333';ctx.lineWidth=1.5;ctx.fillRect(ivX,portY,portW,portH+8);ctx.strokeRect(ivX,portY,portW,portH+8);
+  ctx.fillStyle=iv?'#85B7EB':'#555';ctx.font='9px monospace';ctx.fillText('IN',ivX+5,portY+13);
+  ctx.fillStyle=ev?'#712B13':'#1a1a2e';ctx.strokeStyle=ev?'#D85A30':'#333';ctx.lineWidth=1.5;ctx.fillRect(evX,portY,portW,portH+8);ctx.strokeRect(evX,portY,portW,portH+8);
+  ctx.fillStyle=ev?'#F0997B':'#555';ctx.fillText('EX',evX+4,portY+13);
+  ctx.fillStyle=col;ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(phase.toUpperCase(),cx,H-8);ctx.textAlign='left';
+  ctx.beginPath();ctx.arc(crankCX,crankCY,4,0,Math.PI*2);ctx.fillStyle='#aaa';ctx.fill();
+}
+
+const questions=[
+  {q:"During the compression stroke, which valves are open?",opts:["Both intake and exhaust","Intake only","Exhaust only","Neither — both are closed"],correct:3,exp:"Both valves are closed during compression to build up pressure in the cylinder."},
+  {q:"What is 'valve overlap'?",opts:["When both valves are closed simultaneously","When the inlet valve opens before the piston reaches BDC","The period when both intake and exhaust valves are open at the same time","When the exhaust valve opens before BDC"],correct:2,exp:"Valve overlap occurs near TDC between the exhaust and intake strokes, when both valves are briefly open. It aids cylinder scavenging."},
+  {q:"IVO = 18° BTDC, EVC = 12° ATDC. What is the valve overlap?",opts:["6°","18°","30°","12°"],correct:2,exp:"Overlap = IVO + EVC = 18° + 12° = 30°. Both values count from TDC, so they add together."},
+  {q:"Why does the intake valve open before BDC (Bottom Dead Centre)?",opts:["To reduce engine noise","To allow gas inertia to fill the cylinder more completely","To prevent backfire","To reduce valve bounce"],correct:1,exp:"Opening the valve before BDC and closing it after BDC uses gas inertia to maximise cylinder filling — improving volumetric efficiency."},
+  {q:"What is the likely symptom of severely retarded (late) valve timing?",opts:["Engine runs rough at idle only","Loss of power across all rpm, poor fuel economy","Knocking at low rpm","Backfire on deceleration only"],correct:1,exp:"Late timing reduces the time available for cylinder filling and exhaust scavenging, causing a power and efficiency reduction across the rev range."},
+  {q:"In an interference engine, what happens if the timing belt breaks?",opts:["The engine stalls but is undamaged","The pistons can strike open valves, causing major engine damage","Only the timing marks reset","The oil pressure drops"],correct:1,exp:"Interference engines have overlapping travel paths for pistons and open valves. If timing is lost, a piston can collide with a valve — causing bent valves, damaged pistons, or worse."},
+];
+
+let quizAnswers={};let quizBuilt=false;
+function buildQuiz(){
+  if(quizBuilt)return;quizBuilt=true;
+  const c=document.getElementById('quizContainer');c.innerHTML='';
+  questions.forEach((q,i)=>{
+    const d=document.createElement('div');d.className='card quiz-q';
+    d.innerHTML=`<p><span style="color:var(--color-text-secondary);font-size:12px;">Q${i+1} of ${questions.length}</span><br>${q.q}</p>`+
+      q.opts.map((o,j)=>`<button class="opt-btn" onclick="answerQ(${i},${j},this)">${o}</button>`).join('')+
+      `<div class="feedback-msg hidden" id="fb${i}"></div>`;
+    c.appendChild(d);
+  });
+}
+function answerQ(qi,ai,btn){
+  if(quizAnswers[qi]!==undefined)return;
+  quizAnswers[qi]=ai;const correct=questions[qi].correct===ai;
+  btn.classList.add(correct?'correct':'wrong');
+  if(!correct){const btns=btn.parentElement.querySelectorAll('.opt-btn');btns[questions[qi].correct].classList.add('correct');}
+  const fb=document.getElementById('fb'+qi);fb.classList.remove('hidden');
+  fb.className='feedback-msg '+(correct?'ok':'bad');
+  fb.textContent=(correct?'✓ Correct. ':'✗ Incorrect. ')+questions[qi].exp;
+  if(Object.keys(quizAnswers).length===questions.length){
+    const score=Object.keys(quizAnswers).filter(k=>quizAnswers[k]===questions[parseInt(k)].correct).length;
+    document.getElementById('qScoreText').textContent=score+'/'+questions.length;
+    const msgs=['Review the theory section and try again.','Good effort — revisit any questions you got wrong before moving on.','Strong performance — you are ready for the challenge.','Excellent — full marks! Move on to the challenge.'];
+    document.getElementById('qScoreMsg').textContent=msgs[Math.min(3,Math.floor(score/questions.length*4))];
+    document.getElementById('quizScore').classList.remove('hidden');
+    document.getElementById('quizNextBtn').classList.remove('hidden');
+  }
+}
+
+function checkA(){const v=parseInt(document.getElementById('chalA').value);const ok=v===25;const el=document.getElementById('chalAR');el.textContent=isNaN(v)?'':ok?'✓ Correct! 15° + 10° = 25°':'✗ Hint: add IVO (BTDC) + EVC (ATDC)';el.style.color=ok?'#1D9E75':'#D85A30';if(ok&&!chalDone[0])chalDone[0]=true;}
+function checkB(){const v=parseInt(document.getElementById('chalB').value);const ok=v===250;const el=document.getElementById('chalBR');el.textContent=isNaN(v)?'':ok?'✓ Correct! 20 + 180 + 50 = 250°':'✗ Hint: IVO(BTDC) + 180° + IVC(ABDC)';el.style.color=ok?'#1D9E75':'#D85A30';if(ok&&!chalDone[1])chalDone[1]=true;}
+function checkC(){const v=parseInt(document.getElementById('chalC').value);const ok=v===235;const el=document.getElementById('chalCR');el.textContent=isNaN(v)?'':ok?'✓ Correct! 45 + 180 + 10 = 235°':'✗ Hint: EVO(BBDC) + 180° + EVC(ATDC)';el.style.color=ok?'#1D9E75':'#D85A30';if(ok&&!chalDone[2])chalDone[2]=true;}
+function checkD(){const v=document.getElementById('chalD').value;if(!v)return;const ok=v==='c';const el=document.getElementById('chalDR');el.textContent=ok?'✓ Correct! Excessive overlap causes poor idle but high-rpm gains.':'✗ Excessive overlap (C) — both valves open too long causes reversion and poor idle mixture.';el.style.color=ok?'#1D9E75':'#D85A30';if(ok&&!chalDone[3])chalDone[3]=true;}
+
+function showFinal(){
+  const score=chalDone.filter(Boolean).length;
+  const msgs=['Keep going — work through the calculations again with your notes.','Good start — review the timing formulae for any you missed.','Well done — you can apply valve timing theory to real scenarios.','Outstanding — you have mastered engine valve timing fundamentals!'];
+  document.getElementById('finalScore').classList.remove('hidden');
+  document.getElementById('finalScoreNum').textContent=score+'/4';
+  document.getElementById('finalScoreMsg').textContent=msgs[score];
+  document.getElementById('prog').style.width='100%';
+  window.scrollTo(0,300);
+}
+
+updateSim();
+</script>
+</body>
+</html>
